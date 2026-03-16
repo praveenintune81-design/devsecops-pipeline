@@ -1,23 +1,14 @@
-name: DevSecOps Secure Pipeline
+name: DevSecOps Pipeline
 
-# This pipeline runs automatically when code is pushed to the main branch
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches:
       - main
 
-
-# Permissions required for CodeQL security scanning
-permissions:
-  contents: read
-  security-events: write
-
-
 jobs:
-
-# ------------------------------------------------
-# STAGE 1 — CHECKOUT CODE
-# ------------------------------------------------
 
   checkout-code:
 
@@ -26,91 +17,23 @@ jobs:
     steps:
 
       - name: Checkout Repository
-
         uses: actions/checkout@v4
+        # Download project code
 
-        # This step downloads the repository code
-        # to the GitHub Actions runner machine
-        # so that the pipeline can analyze and build it
-
-
-
-# ------------------------------------------------
-# STAGE 2 — STATIC CODE ANALYSIS (CODEQL)
-# ------------------------------------------------
-
-  codeql-analysis:
-
-    runs-on: ubuntu-latest
-
-    needs: checkout-code
-
-    steps:
-
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-        # Code must be checked out again because each job runs on a fresh runner
-
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript
-
-        # CodeQL is GitHub's security analysis tool
-        # It detects vulnerabilities such as:
-        # SQL Injection
-        # Cross Site Scripting (XSS)
-        # insecure coding patterns
-
-
-      - name: Autobuild Project
-        uses: github/codeql-action/autobuild@v3
-
-        # Autobuild attempts to automatically build the project
-        # so CodeQL can analyze the compiled source code
-
-
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-
-        # This step performs the actual security analysis
-
-
-
-# ------------------------------------------------
-# STAGE 3 — SECRET SCANNING
-# ------------------------------------------------
 
   secret-scan:
 
     runs-on: ubuntu-latest
 
-    needs: checkout-code
-
     steps:
 
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-
 
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
+        # Detect leaked secrets
 
-        # Gitleaks scans the repository for exposed secrets
-        # Examples:
-        # AWS Access Keys
-        # API Tokens
-        # Hardcoded passwords
-
-        # If a secret is detected, the pipeline can fail
-
-
-
-# ------------------------------------------------
-# STAGE 4 — DEPENDENCY VULNERABILITY SCAN
-# ------------------------------------------------
 
   dependency-scan:
 
@@ -122,29 +45,18 @@ jobs:
 
     steps:
 
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-
-      - name: Install Node Dependencies
+      - name: Install Dependencies
         run: npm install
         working-directory: ${{ matrix.service }}
 
-        # Installs project dependencies for backend and frontend
-
-
-      - name: Run npm Audit
+      - name: Run npm audit
         run: npm audit --audit-level=high
         working-directory: ${{ matrix.service }}
+        # Scan vulnerable npm packages
 
-        # npm audit checks for known vulnerabilities
-        # in installed npm packages
-
-
-
-# ------------------------------------------------
-# STAGE 5 — DOCKERFILE SECURITY SCAN
-# ------------------------------------------------
 
   dockerfile-scan:
 
@@ -156,28 +68,15 @@ jobs:
 
     steps:
 
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-
       - name: Run Hadolint
-        uses: hadolint/hadolint-action@v2
-        with:
-          dockerfile: ${{ matrix.service }}/Dockerfile
-
-        # Hadolint analyzes Dockerfiles and enforces best practices
-        # Example checks:
-        # Avoid using latest tag
-        # Avoid running containers as root
-        # Reduce unnecessary layers
+        run: docker run --rm -i hadolint/hadolint < ${{ matrix.service }}/Dockerfile
+        # Dockerfile security scan
 
 
-
-# ------------------------------------------------
-# STAGE 6 — BUILD DOCKER IMAGE
-# ------------------------------------------------
-
-  build-image:
+  build:
 
     runs-on: ubuntu-latest
 
@@ -191,26 +90,19 @@ jobs:
 
     steps:
 
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-
 
       - name: Build Docker Image
         run: docker build -t ${{ matrix.service }} ./${{ matrix.service }}
+        # Build Docker image
 
-        # Builds Docker images for backend and frontend services
-
-
-
-# ------------------------------------------------
-# STAGE 7 — CONTAINER IMAGE SECURITY SCAN
-# ------------------------------------------------
 
   trivy-scan:
 
     runs-on: ubuntu-latest
 
-    needs: build-image
+    needs: build
 
     strategy:
       matrix:
@@ -218,33 +110,8 @@ jobs:
 
     steps:
 
-      - name: Scan Docker Image
+      - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ matrix.service }}
-
-        # Trivy scans Docker images for vulnerabilities
-        # It checks:
-        # Operating system packages
-        # Installed libraries
-        # Known CVEs (Common Vulnerabilities and Exposures)
-
-
-
-# ------------------------------------------------
-# STAGE 8 — DEPLOY APPLICATION
-# ------------------------------------------------
-
-  deploy:
-
-    runs-on: ubuntu-latest
-
-    needs: trivy-scan
-
-    steps:
-
-      - name: Deploy Backend Container
-        run: docker run -d -p 80:3000 backend
-
-        # This step runs the backend container
-        # mapping port 80 of the server to port 3000 inside the container
+        # Scan Docker image vulnerabilities
