@@ -110,19 +110,27 @@ jobs:
 
     steps:
 
-      - name: Scan Docker Image with Trivy
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        # This downloads the repository code to the runner
+
+
+      - name: Run Trivy Filesystem Scan
 
         uses: aquasecurity/trivy-action@0.24.0
 
         with:
-          image-ref: ${{ matrix.service }}
+          scan-type: fs
+          scan-ref: ${{ matrix.service }}
           format: table
           exit-code: 0
           ignore-unfixed: true
           severity: CRITICAL,HIGH
 
-        # Trivy scans Docker images for vulnerabilities
-        # format: table shows readable scan output
+        # scan-type fs means filesystem scan
+        # scan-ref points to backend or frontend folder
+        # exit-code 0 prevents pipeline failure
+
         # exit-code: 0 prevents pipeline failure if vulnerabilities exist
         # ignore-unfixed ignores vulnerabilities without available fixes
         # severity filters high and critical vulnerabilities
