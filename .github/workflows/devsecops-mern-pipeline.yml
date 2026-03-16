@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
         # Download project code
 
-secret-scan:
+  secret-scan:
 
     runs-on: ubuntu-latest
 
@@ -28,15 +28,13 @@ secret-scan:
 
       - name: Checkout Code
         uses: actions/checkout@v4
-        # This downloads repository code to the runner machine
-
+        # This downloads the repository code to the GitHub runner
 
       - name: Run Gitleaks Secret Scan
         uses: gitleaks/gitleaks-action@v2
-
         env:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
-
+ 
 
   dependency-scan:
 
