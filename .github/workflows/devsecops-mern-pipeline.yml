@@ -110,8 +110,19 @@ jobs:
 
     steps:
 
-      - name: Run Trivy Scan
-        uses: aquasecurity/trivy-action@master
+      - name: Scan Docker Image with Trivy
+
+        uses: aquasecurity/trivy-action@0.24.0
+
         with:
           image-ref: ${{ matrix.service }}
-        # Scan Docker image vulnerabilities
+          format: table
+          exit-code: 0
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+        # Trivy scans Docker images for vulnerabilities
+        # format: table shows readable scan output
+        # exit-code: 0 prevents pipeline failure if vulnerabilities exist
+        # ignore-unfixed ignores vulnerabilities without available fixes
+        # severity filters high and critical vulnerabilities
